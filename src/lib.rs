@@ -1,7 +1,7 @@
 use std::{
     error::Error,
     fs::{self, File},
-    io::{BufReader, BufWriter, ErrorKind},
+    io::{self, BufReader, BufWriter, ErrorKind},
     path::PathBuf,
 };
 
@@ -14,20 +14,23 @@ pub struct Bucket {
 
 pub enum BucketChild {
     Resource(String),
-    SubBucket(String)
+    SubBucket(String),
 }
 
 impl Bucket {
     pub fn path(&self) -> PathBuf {
         let rdns_path = self.rdns.replace('.', "/");
-        let mut path = PathBuf::from(dirs::data_dir().unwrap());
+        let mut path = dirs::data_dir().unwrap();
         path.push("bucket");
         path.push(rdns_path);
         path
     }
 
-    pub fn new(rdns: String, shared: bool) -> Self {
-        let result = Self { rdns, shared };
+    pub fn new<S>(rdns: S, shared: bool) -> Self
+    where
+        S : Into<String>
+    {
+        let result = Self { rdns: rdns.into(), shared };
         let path = result.path();
 
         if let Err(e) = fs::create_dir_all(&path) {
@@ -62,14 +65,30 @@ impl Bucket {
         )?)
     }
 
-    pub fn list_contents(&self) -> Result<Vec<BucketChild>, Box<dyn Error>> {
-        todo!()
+    pub fn list_contents(&self) -> Result<Vec<BucketChild>, io::Error> {
+        let dir = fs::read_dir(self.path())?;
+
+        let entries = dir.map(|entry| {
+            entry.and_then(|entry| {
+                if entry.file_type()?.is_dir() {
+                    Ok(BucketChild::SubBucket(
+                        entry.file_name().to_string_lossy().to_string(),
+                    ))
+                } else {
+                    Ok(BucketChild::Resource(
+                        entry.file_name().to_string_lossy().to_string(),
+                    ))
+                }
+            })
+        });
+
+        let mut result = Vec::new();
+        for entry in entries {
+            result.push(entry?);
+        }
+
+        Ok(result)
     }
-
-}
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
 }
 
 #[cfg(test)]
@@ -77,8 +96,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn bucket_path() {
+        let bucket = Bucket::new("com.example.Example", false);
+        assert_eq!(bucket.path(), dirs::data_dir().unwrap().join("bucket/com/example/Example"));
     }
 }
