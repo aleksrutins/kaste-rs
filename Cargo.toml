@@ -1,7 +1,11 @@
 [package]
-name = "kaste-rs"
+name = "kaste"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+homepage = "https://aleksrutins.pages.gitlab.gnome.org/kaste"
+description = "Rust port of a simple library for application data storage."
+repository = "https://github.com/aleksrutins/kaste-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
